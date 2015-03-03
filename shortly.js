@@ -1,8 +1,9 @@
 var express = require('express');
-var session = require('express-session')
+var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -32,12 +33,9 @@ app.use(session({
 
 function authenticate(req, res, next){
   req.session.test = 'test';
-  console.log(req.session)
   if (req.session.user) {
-    console.log("IF", req.session.user)
     next();
   } else {
-    console.log("ELSE", req.session.user)
     req.session.error = "Access Denied!";
     res.redirect('/login');
   }
@@ -103,14 +101,24 @@ app.post('/signup', function (req, res) {
       res.send(404);
       // Add case for duplicate username later
     } else {
-      var newUser = new User({
-        username: username,
-        password: password
-      });
 
-      newUser.save().then(function(newUser){
-        Users.add(newUser);
-        res.status(200).redirect('/');
+      bcrypt.genSalt(null, function (err, salt) {
+
+        bcrypt.hash(password, salt, null, function (error, hashed) {
+
+          var newUser = new User({
+            username: username,
+            password: hashed,
+            salt: salt
+          });
+          console.log("SALT",salt);
+          console.log("HASHED",hashed);
+
+          newUser.save().then(function(newUser){
+            Users.add(newUser);
+            res.status(200).redirect('/');
+          });
+        });
       });
     }
   });
@@ -120,29 +128,23 @@ app.post('/login', function (req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
-  new User({ username: username, password: password}).fetch().then( function (found) {
-
+  new User({ username: username}).fetch().then( function (found) {
     if (found) {
-      console.log("POST", req.session)
-      req.session.regenerate( function(){
-        req.session.user = found.get('username');
-        console.log("USERNAME", req.session);
-
-        res.redirect('/');
+      bcrypt.hash(password, found.get('salt'), null, function (err, hashed) {
+        if ( hashed === found.get('password')){
+          req.session.regenerate( function(){
+            req.session.user = found.get('username');
+            res.redirect('/');
+          });
+        } else {res.redirect('/login');}
       });
-    } else {
-      res.redirect('/login');
-    }
-
+    } else {res.redirect('/login');}
   });
-
 });
 
 app.get('/logout', function (req, res) {
   req.session.destroy( function(){
-    console.log("LOGOUT",req.session);
-    // res.render('login')
-    res.redirect('/')
+    res.redirect('/');
   });
 
 });
@@ -152,9 +154,7 @@ app.get('/logout', function (req, res) {
 /************************************************************/
 
 app.get('/login', function (req, res) {
-  console.log("HELLO");
-
-  res.status(200).render('login')
+  res.status(200).render('login');
 });
 
 app.get('/signup', function (req, res) {
@@ -192,3 +192,5 @@ app.get('/*', function(req, res) {
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
+
+db.knex.schema.dropTable('users');
