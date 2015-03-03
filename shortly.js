@@ -140,7 +140,9 @@ app.post('/login', function (req, res) {
 
 app.post('/logout', function (req, res) {
   req.session.destroy( function(){
-    res.redirect('/')
+    console.log("LOGOUT",req.session);
+    // res.render('login')
+    res.redirect('/login')
   });
 
 });
@@ -150,7 +152,9 @@ app.post('/logout', function (req, res) {
 /************************************************************/
 
 app.get('/login', function (req, res) {
-  res.status(200).render('login');
+  console.log("HELLO");
+
+  res.status(200).render('login')
 });
 
 app.get('/signup', function (req, res) {
