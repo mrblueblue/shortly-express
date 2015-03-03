@@ -57,6 +57,19 @@ db.knex.schema.hasTable('users').then(function(exists) {
   }
 });
 
+// db.knex.schema.hasTable('userlinks').then(function(exists) {
+//   if (!exists) {
+//     db.knex.schema.createTable('userlinks', function (userlink) {
+//       userlink.increments('id').primary();
+//       userlink.integer('user_id').references('users.id');
+//       userlink.integer('link_id').references('urls.id');
+//     }).then(function (table) {
+//       console.log('Created Table', table);
+//     });
+//   }
+// });
+
+// db.knex.select('*').from('userlinks')
 
 
 

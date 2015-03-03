@@ -7,13 +7,3 @@ var User = db.Model.extend({
 });
 
 module.exports = User;
-
-
-
-// var Click = db.Model.extend({
-//   tableName: 'clicks',
-//   hasTimestamps: true,
-//   link: function() {
-//     return this.belongsTo(Link, 'link_id');
-//   }
-// });
