@@ -17,22 +17,36 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(obj, done) {
+  done(null, obj);
+});
+
 passport.use(new GitHubStrategy({
     clientID: '9383eeff63778d471150',
     clientSecret: '2b21bc00e32f7b2e65738042fbf0ce9b7d5fe4ad',
     callbackURL: 'http://localhost:4568/auth/github/callback'
   },
+
+
+
   function(accessToken, refreshToken, profile, done) {
-    console.log("calllllback", profile);
-    // User.findOrCreate({githubId: profile.id}, function(err, user) {
-      // done(err, user);
-    done( null, profile);
-    // });
+    console.log(" 26 done ", done)
+    console.log(" 27 REFRESH ",refreshToken)
+    console.log(" 28 ACCESS TOKEN ", accessToken)
+    console.log(" 29 calllllback ", profile);
+
+    process.nextTick(function () {
+      return done(null, profile);
+    });
   }
+
 ));
 
 var app = express();
-
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
@@ -56,12 +70,13 @@ app.use(passport.session());
 app.get('/auth/github',
   passport.authenticate('github'));
 
-app.get('/auth/provider/callback',
-  passport.authenticate('provider', { successRedirect: '/',
+app.get('/auth/github/callback',
+  passport.authenticate('github', { successRedirect: '/',
                                       failureRedirect: '/login' }));
 
 app.get('/',
 function(req, res) {
+  console.log('SESSION',req.session);
   res.render('index');
 });
 
