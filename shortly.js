@@ -9,7 +9,6 @@ var passport = require('passport');
 var OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
 var GitHubStrategy = require('passport-github').Strategy;
 
-
 var db = require('./app/config');
 var Users = require('./app/collections/users');
 var User = require('./app/models/user');
@@ -17,7 +16,7 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
-// refactor to uti;
+// refactor to util;
 function authenticate(req, res, next){
   if (req.session.user || (req.session.passport.user && req.session.passport.user.username)) {
     next();
@@ -44,10 +43,6 @@ passport.use(new GitHubStrategy({
   // refactor callback
 
   function(accessToken, refreshToken, profile, done) {
-    console.log(" 26 done ", done)
-    console.log(" 27 REFRESH ",refreshToken)
-    console.log(" 28 ACCESS TOKEN ", accessToken)
-    console.log(" 29 calllllback ", profile);
 
     var username = profile.username;
 
@@ -258,5 +253,3 @@ app.get('/*', function(req, res) {
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
-
-db.knex.schema.dropTable('users');
