@@ -7,21 +7,7 @@ var bcrypt = require('bcrypt-nodejs');
 
 var passport = require('passport');
 var OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
-
-passport.use('provider', new OAuth2Strategy({
-    authorizationURL: 'https://github.com/login/oauth/authorize/',
-    tokenURL: 'https://github.com/login/oauth/access_token/',
-    clientID: '9383eeff63778d471150',
-    clientSecret: '2b21bc00e32f7b2e65738042fbf0ce9b7d5fe4ad',
-    callbackURL: '127.0.0.1:4568/auth/github/callback/'
-  },
-
-  function(accessToken, refreshToken, profile, done) {
-    User.findOrCreate({appid: profile.id}, function(err, user) {
-      done(err, user);
-    });
-  }
-));
+var GitHubStrategy = require('passport-github').Strategy;
 
 
 var db = require('./app/config');
@@ -31,7 +17,22 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
+passport.use(new GitHubStrategy({
+    clientID: '9383eeff63778d471150',
+    clientSecret: '2b21bc00e32f7b2e65738042fbf0ce9b7d5fe4ad',
+    callbackURL: 'http://localhost:4568/auth/github/callback'
+  },
+  function(accessToken, refreshToken, profile, done) {
+    console.log("calllllback", profile);
+    // User.findOrCreate({githubId: profile.id}, function(err, user) {
+      // done(err, user);
+    done( null, profile);
+    // });
+  }
+));
+
 var app = express();
+
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
@@ -49,15 +50,15 @@ app.use(session({
   // cookie: { secure: true },
 }));
 
-app.get('/auth/github/',
-  passport.authenticate('provider'));
+app.use(passport.initialize());
+app.use(passport.session());
 
-app.get('/auth/github/callback/',
-  passport.authenticate('provider', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/');
-  });
+app.get('/auth/github',
+  passport.authenticate('github'));
+
+app.get('/auth/provider/callback',
+  passport.authenticate('provider', { successRedirect: '/',
+                                      failureRedirect: '/login' }));
 
 app.get('/',
 function(req, res) {
@@ -161,10 +162,9 @@ app.post('/login', function (req, res) {
 });
 
 app.get('/logout', function (req, res) {
-  req.session.destroy( function(){
-    res.redirect('/');
-  });
-
+  console.log("logout")
+  req.logout();
+  res.redirect('/login');
 });
 
 /************************************************************/
