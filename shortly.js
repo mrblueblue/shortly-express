@@ -17,6 +17,16 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 
+// refactor to uti;
+function authenticate(req, res, next){
+  if (req.session.user || (req.session.passport.user && req.session.passport.user.username)) {
+    next();
+  } else {
+    req.session.error = "Access Denied!";
+    res.redirect('/login');
+  }
+}
+
 passport.serializeUser(function(user, done) {
   done(null, user);
 });
@@ -31,7 +41,7 @@ passport.use(new GitHubStrategy({
     callbackURL: 'http://localhost:4568/auth/github/callback'
   },
 
-
+  // refactor callback
 
   function(accessToken, refreshToken, profile, done) {
     console.log(" 26 done ", done)
@@ -39,8 +49,31 @@ passport.use(new GitHubStrategy({
     console.log(" 28 ACCESS TOKEN ", accessToken)
     console.log(" 29 calllllback ", profile);
 
-    process.nextTick(function () {
-      return done(null, profile);
+    var username = profile.username;
+
+    new User({ username: username }).fetch().then(function(found){
+      if (found) {
+        return done(null, profile)
+      } else {
+
+        bcrypt.genSalt(null, function (err, salt) {
+
+          bcrypt.hash(accessToken, salt, null, function (error, hashed) {
+
+            var newUser = new User({
+              username: username,
+              password: hashed,
+              salt: salt
+            });
+
+            newUser.save().then(function(newUser){
+              Users.add(newUser);
+              return done(null, profile)
+            });
+
+          });
+        });
+      }
     });
   }
 
@@ -74,18 +107,18 @@ app.get('/auth/github/callback',
   passport.authenticate('github', { successRedirect: '/',
                                       failureRedirect: '/login' }));
 
-app.get('/',
+app.get('/', authenticate,
 function(req, res) {
   console.log('SESSION',req.session);
   res.render('index');
 });
 
-app.get('/create',
+app.get('/create', authenticate,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links',
+app.get('/links', authenticate,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
@@ -100,7 +133,7 @@ function(req, res) {
     console.log('Not a valid url: ', uri);
     return res.send(404);
   }
-
+//refactor to utl
   new Link({ url: uri}).fetch().then(function(found) {
     if (found) {
       res.send(200, found.attributes);
@@ -135,7 +168,7 @@ app.post('/signup', function (req, res) {
       res.send(404);
       // Add case for duplicate username later
     } else {
-
+ // refactor ro util
       bcrypt.genSalt(null, function (err, salt) {
 
         bcrypt.hash(password, salt, null, function (error, hashed) {
@@ -161,7 +194,7 @@ app.post('/signup', function (req, res) {
 app.post('/login', function (req, res) {
   var username = req.body.username;
   var password = req.body.password;
-
+//refactor to util
   new User({ username: username}).fetch().then( function (found) {
     if (found) {
       bcrypt.hash(password, found.get('salt'), null, function (err, hashed) {
