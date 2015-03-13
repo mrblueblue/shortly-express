@@ -124,6 +124,7 @@ describe('', function() {
           db.knex('urls')
             .where('url', '=', 'http://www.roflzoo.com/')
             .then(function(urls) {
+              console.log(urls);
               if (urls['0'] && urls['0']['url']) {
                 var foundUrl = urls['0']['url'];
               }
@@ -136,12 +137,13 @@ describe('', function() {
       it('Fetches the link url title', function (done) {
         requestWithSession(options, function(error, res, body) {
           db.knex('urls')
-            .where('title', '=', 'Rofl Zoo - Daily funny animal pictures')
+            .where('title', '=', 'Rofl Zoo')
             .then(function(urls) {
+              console.log('111111',urls);
               if (urls['0'] && urls['0']['title']) {
                 var foundTitle = urls['0']['title'];
               }
-              expect(foundTitle).to.equal('Rofl Zoo - Daily funny animal pictures');
+              expect(foundTitle).to.equal('Rofl Zoo');
               done();
             });
         });
