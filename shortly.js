@@ -5,6 +5,9 @@ var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
 
+var passport = require('passport');
+var OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
+var GitHubStrategy = require('passport-github').Strategy;
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -12,6 +15,64 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+
+// refactor to util;
+function authenticate(req, res, next){
+  if (req.session.user || (req.session.passport.user && req.session.passport.user.username)) {
+    next();
+  } else {
+    req.session.error = "Access Denied!";
+    res.redirect('/login');
+  }
+}
+
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(obj, done) {
+  done(null, obj);
+});
+
+passport.use(new GitHubStrategy({
+    clientID: '9383eeff63778d471150',
+    clientSecret: '2b21bc00e32f7b2e65738042fbf0ce9b7d5fe4ad',
+    callbackURL: 'http://localhost:4568/auth/github/callback'
+  },
+
+  // refactor callback
+
+  function(accessToken, refreshToken, profile, done) {
+
+    var username = profile.username;
+
+    new User({ username: username }).fetch().then(function(found){
+      if (found) {
+        return done(null, profile)
+      } else {
+
+        bcrypt.genSalt(null, function (err, salt) {
+
+          bcrypt.hash(accessToken, salt, null, function (error, hashed) {
+
+            var newUser = new User({
+              username: username,
+              password: hashed,
+              salt: salt
+            });
+
+            newUser.save().then(function(newUser){
+              Users.add(newUser);
+              return done(null, profile)
+            });
+
+          });
+        });
+      }
+    });
+  }
+
+));
 
 var app = express();
 
@@ -31,18 +92,19 @@ app.use(session({
   // cookie: { secure: true },
 }));
 
-function authenticate(req, res, next){
-  req.session.test = 'test';
-  if (req.session.user) {
-    next();
-  } else {
-    req.session.error = "Access Denied!";
-    res.redirect('/login');
-  }
-}
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('/auth/github',
+  passport.authenticate('github'));
+
+app.get('/auth/github/callback',
+  passport.authenticate('github', { successRedirect: '/',
+                                      failureRedirect: '/login' }));
 
 app.get('/', authenticate,
 function(req, res) {
+  console.log('SESSION',req.session);
   res.render('index');
 });
 
@@ -66,7 +128,7 @@ function(req, res) {
     console.log('Not a valid url: ', uri);
     return res.send(404);
   }
-
+//refactor to utl
   new Link({ url: uri}).fetch().then(function(found) {
     if (found) {
       res.send(200, found.attributes);
@@ -101,7 +163,7 @@ app.post('/signup', function (req, res) {
       res.send(404);
       // Add case for duplicate username later
     } else {
-
+ // refactor ro util
       bcrypt.genSalt(null, function (err, salt) {
 
         bcrypt.hash(password, salt, null, function (error, hashed) {
@@ -127,7 +189,7 @@ app.post('/signup', function (req, res) {
 app.post('/login', function (req, res) {
   var username = req.body.username;
   var password = req.body.password;
-
+//refactor to util
   new User({ username: username}).fetch().then( function (found) {
     if (found) {
       bcrypt.hash(password, found.get('salt'), null, function (err, hashed) {
@@ -143,10 +205,9 @@ app.post('/login', function (req, res) {
 });
 
 app.get('/logout', function (req, res) {
-  req.session.destroy( function(){
-    res.redirect('/');
-  });
-
+  console.log("logout")
+  req.logout();
+  res.redirect('/login');
 });
 
 /************************************************************/
@@ -192,5 +253,3 @@ app.get('/*', function(req, res) {
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
-
-db.knex.schema.dropTable('users');

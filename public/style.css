@@ -135,3 +135,11 @@ form input[type=text], form input[type=password] {
 .creator .message {
   clear: both;
 }
+
+.login-list {
+
+    list-style-type: none;
+    padding: 1em;
+    margin: 0;
+}
+
