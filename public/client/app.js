@@ -4,6 +4,7 @@ window.Shortly = Backbone.View.extend({
   events: {
     'click li a.index':  'renderIndexView',
     'click li a.create': 'renderCreateView'
+    // 'click li a.logout': 'logout'
   },
 
   initialize: function(){
@@ -37,4 +38,5 @@ window.Shortly = Backbone.View.extend({
       .filter('.' + routeName)
       .addClass('selected');
   }
+
 });

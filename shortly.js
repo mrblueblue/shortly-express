@@ -1,7 +1,9 @@
 var express = require('express');
+var session = require('express-session');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
 
 
 var db = require('./app/config');
@@ -22,25 +24,41 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+app.use(session({
+  secret: 'nyan cat',
+  resave: false,
+  saveUninitialized: false
+  // cookie: { secure: true },
+}));
 
-app.get('/', 
+function authenticate(req, res, next){
+  req.session.test = 'test';
+  if (req.session.user) {
+    next();
+  } else {
+    req.session.error = "Access Denied!";
+    res.redirect('/login');
+  }
+}
+
+app.get('/', authenticate,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create', authenticate,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links', authenticate,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
@@ -49,7 +67,7 @@ function(req, res) {
     return res.send(404);
   }
 
-  new Link({ url: uri }).fetch().then(function(found) {
+  new Link({ url: uri}).fetch().then(function(found) {
     if (found) {
       res.send(200, found.attributes);
     } else {
@@ -74,10 +92,74 @@ function(req, res) {
   });
 });
 
+app.post('/signup', function (req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({ username: username }).fetch().then(function(found){
+    if (found) {
+      res.send(404);
+      // Add case for duplicate username later
+    } else {
+
+      bcrypt.genSalt(null, function (err, salt) {
+
+        bcrypt.hash(password, salt, null, function (error, hashed) {
+
+          var newUser = new User({
+            username: username,
+            password: hashed,
+            salt: salt
+          });
+          console.log("SALT",salt);
+          console.log("HASHED",hashed);
+
+          newUser.save().then(function(newUser){
+            Users.add(newUser);
+            res.status(200).redirect('/');
+          });
+        });
+      });
+    }
+  });
+});
+
+app.post('/login', function (req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({ username: username}).fetch().then( function (found) {
+    if (found) {
+      bcrypt.hash(password, found.get('salt'), null, function (err, hashed) {
+        if ( hashed === found.get('password')){
+          req.session.regenerate( function(){
+            req.session.user = found.get('username');
+            res.redirect('/');
+          });
+        } else {res.redirect('/login');}
+      });
+    } else {res.redirect('/login');}
+  });
+});
+
+app.get('/logout', function (req, res) {
+  req.session.destroy( function(){
+    res.redirect('/');
+  });
+
+});
+
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
 
+app.get('/login', function (req, res) {
+  res.status(200).render('login');
+});
+
+app.get('/signup', function (req, res) {
+  res.status(200).render('signup');
+});
 
 
 /************************************************************/
@@ -110,3 +192,5 @@ app.get('/*', function(req, res) {
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
+
+db.knex.schema.dropTable('users');

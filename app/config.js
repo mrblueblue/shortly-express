@@ -44,6 +44,35 @@ db.knex.schema.hasTable('clicks').then(function(exists) {
 /************************************************************/
 // Add additional schema definitions below
 /************************************************************/
+// db.knex.schema.dropTable('users');
+
+db.knex.schema.hasTable('users').then(function(exists) {
+  if (!exists) {
+    db.knex.schema.createTable('users', function (user) {
+      user.increments('id').primary();
+      user.string('username', 100);
+      user.string('password', 100);
+      user.string('salt', 100);
+    }).then(function (table) {
+      console.log('Created Table', table);
+    });
+  }
+});
+
+// db.knex.schema.hasTable('userlinks').then(function(exists) {
+//   if (!exists) {
+//     db.knex.schema.createTable('userlinks', function (userlink) {
+//       userlink.increments('id').primary();
+//       userlink.integer('user_id').references('users.id');
+//       userlink.integer('link_id').references('urls.id');
+//     }).then(function (table) {
+//       console.log('Created Table', table);
+//     });
+//   }
+// });
+
+// db.knex.select('*').from('userlinks')
+
 
 
 module.exports = db;
